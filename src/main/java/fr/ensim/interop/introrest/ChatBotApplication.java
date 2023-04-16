@@ -1,6 +1,7 @@
 package fr.ensim.interop.introrest;
 
 import fr.ensim.interop.introrest.controller.TelegramController;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.telegram.telegrambots.meta.TelegramBotsApi;

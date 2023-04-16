@@ -21,11 +21,12 @@ public class MeteoController {
     @GetMapping(value = "/meteo", params = {"cityName"})
     public ResponseEntity<OpenWeather> meteo(@RequestParam("cityName") String cityName){
         RestTemplate restTemplate = new RestTemplate();
+        //On utilise l'api Geocoding pour recupérer les coordonnées
         City[] cities = restTemplate.getForObject(cityURL,City[].class,cityName,token);
+        if(cities.length == 0){
+            return ResponseEntity.notFound().build();
+        }
         City city = cities[0];
-
-        System.out.println(city.lat);
-        System.out.println(city.lon);
         OpenWeather openWeather = restTemplate.getForObject(meteoURL,OpenWeather.class, String.valueOf(city.lat),String.valueOf(city.lon),token);
         return ResponseEntity.ok().body(openWeather);
     }
