@@ -23,7 +23,7 @@ public class TelegramController extends TelegramLongPollingBot {
     public void onUpdateReceived(Update update) {
         Message message = update.getMessage();
         User user = message.getFrom();
-
+        /*
         Pattern pattern = Pattern.compile("quoi", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(message.getText());
         boolean matchFound = matcher.find();
@@ -31,7 +31,7 @@ public class TelegramController extends TelegramLongPollingBot {
             sendText(user.getId(),"Feur");
         } else {
             sendText(user.getId(),"T'es cringe frerot");
-        }
+        }*/
     }
 
     public void sendText(Long who, String what){
