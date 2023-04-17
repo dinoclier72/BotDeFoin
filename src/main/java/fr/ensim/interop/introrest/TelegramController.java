@@ -103,6 +103,10 @@ public class TelegramController extends TelegramLongPollingBot {
                             sendText(userID,"Feur");
                         }
                         break;
+
+                    case "poulet":
+                        sendText(userID,"🐔");
+                        break;
                     case "/blague":
                         Joke joke = restTemplate.getForObject(localURL+"/blague",Joke.class);
                         sendText(userID,formatBlague(joke));
@@ -116,6 +120,8 @@ public class TelegramController extends TelegramLongPollingBot {
                         initJokeChain(userID);
                         sendText(userID,"c'est parti pour la création de ta blague, donne moi un titre");
                         break;
+
+
                 }
                 break;
             case WAITING_FOR_CITY:
