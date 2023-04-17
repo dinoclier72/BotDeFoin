@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,16 +41,33 @@ public class JokeController {
     }
 
     @GetMapping(value = "/blague")
-    public ResponseEntity<Joke> recupererBlague(@RequestParam(value = "id", required = false) Integer id) {
+    public ResponseEntity<Joke> recupererBlague(@RequestParam(value = "id", required = false) Integer id,@RequestParam(value = "grade", required = false) Float grade) {
+
+        Random random = new Random();
+
         //recupération d'une blague specifique
         if (id != null) {
              if(listeBlagues.containsKey(id))
                  return ResponseEntity.ok(listeBlagues.get(id));
             return ResponseEntity.notFound().build();
         }
+        //recuperation d'une blague selon son niveau
+        if (grade != null) {
+            Collection<Joke> jokeCollection = listeBlagues.values();
+            for(Joke joke : jokeCollection){
+                if (joke.getGrade() < grade){
+                    jokeCollection.remove(joke);
+                }
+
+            }
+            if(jokeCollection.size()==0)
+                return ResponseEntity.notFound().build();
+            int index = random.nextInt(jokeCollection.size());
+            return ResponseEntity.ok(jokeCollection.toArray()[index]);
+
+        }
         //recuperation d'une blague aléatoire
         ArrayList<Integer> ids = new ArrayList<>(listeBlagues.keySet());
-        Random random = new Random();
         int index = random.nextInt(ids.size());
         int randomId = ids.get(index);
         return ResponseEntity.ok(listeBlagues.get(randomId));
