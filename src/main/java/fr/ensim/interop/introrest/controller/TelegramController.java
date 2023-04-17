@@ -1,16 +1,18 @@
 package fr.ensim.interop.introrest.controller;
 
-import fr.ensim.interop.introrest.ChatBotApplication;
+import fr.ensim.interop.introrest.model.joke.Joke;
 import fr.ensim.interop.introrest.model.meteo.List;
 import fr.ensim.interop.introrest.model.meteo.OpenWeather;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.*;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import java.util.HashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class TelegramController extends TelegramLongPollingBot {
     /*
@@ -27,11 +29,15 @@ public class TelegramController extends TelegramLongPollingBot {
     //etat de la conversation avec le bot
     private enum BotState{
         WAITING_FOR_CITY,
-        IDLE
+        IDLE,
+        WAITING_FOR_JOKE_ID
     }
     private HashMap<Long,BotState> userBotState = new HashMap<Long,BotState>();
     private void resetUserState(long user){
-        userBotState.put(user,BotState.IDLE);
+        setUserBotState(user,BotState.IDLE);
+    }
+    private void setUserBotState(long user, BotState botState){
+        userBotState.put(user,botState);
     }
     private RestTemplate restTemplate = new RestTemplate();
     @Override
@@ -56,16 +62,30 @@ public class TelegramController extends TelegramLongPollingBot {
         String messageText = message.getText();
         //on rajoute l'utilisateur actuelle à la map si besoin
         if(!userBotState.containsKey(userID))
-            userBotState.put(userID,BotState.IDLE);
+            resetUserState(userID);
         //on regarde selon l'état du bot
         switch (userBotState.get(userID)){
             case IDLE:
                 switch (messageText){
                     case "/meteo":
-                        userBotState.put(userID,BotState.WAITING_FOR_CITY);
+                        setUserBotState(userID,BotState.WAITING_FOR_CITY);
                         sendText(userID,"Mode meteo activé, donnez maintenant une ville pour la recherche");
                         break;
+                    default:
+                        Pattern pattern = Pattern.compile("quoi", Pattern.CASE_INSENSITIVE);
+                        Matcher matcher = pattern.matcher(message.getText());
+                        boolean matchFound = matcher.find();
+                        if(matchFound) {
+                            sendText(userID,"Feur");
+                        }
+                        break;
                     case "/blague":
+                        Joke joke = restTemplate.getForObject(localURL+"/blague",Joke.class);
+                        sendText(userID,formatBlague(joke));
+                        break;
+                    case "/blaguespecifique":
+                        setUserBotState(userID,BotState.WAITING_FOR_JOKE_ID);
+                        sendText(userID,"Mode blague specifique activé, donnez maintenant l'id de la blague recherchée");
                         break;
                 }
                 break;
@@ -74,32 +94,12 @@ public class TelegramController extends TelegramLongPollingBot {
                 sendText(userID,bulletin);
                 resetUserState(userID);
                 break;
+            case WAITING_FOR_JOKE_ID:
+                int id = Integer.parseInt(messageText);
+                sendText(userID,grabJoke(id));
+                resetUserState(userID);
+                break;
         }
-
-        /*
-                        OpenWeather openWeather = restTemplate.getForObject("http://127.0.0.1:9090/meteo")
-                String bulletinMeteo = "--------------------------------------------------------\n" +
-                        "               Bulletin Météo pour " + jsonObject.getJSONObject("city").getString("name") + "\n" +
-                        "--------------------------------------------------------\n" +
-                        "Date et Heure : " + dateAndTime + "\n" +
-                        "Conditions météo actuelles : " + weatherDescription + "\n\n" +
-                        "Température : " + temperature + "°C\n" +
-                        "Température minimale : " + tempMin + "°C\n" +
-                        "Température maximale : " + tempMax + "°C\n" +
-                        "Humidité : " + humidity + "%\n" +
-                        "Visibilité : " + visibility + " mètres\n" +
-                        "Vitesse du vent : " + windSpeed + " m/s\n" +
-                        "Direction du vent : " + windDirection + " degrés\n" +
-                        "Rafales de vent : " + windGust + " m/s\n\n" +
-                        "Merci d'avoir consulté notre bulletin météo !";
-        Pattern pattern = Pattern.compile("quoi", Pattern.CASE_INSENSITIVE);
-        Matcher matcher = pattern.matcher(message.getText());
-        boolean matchFound = matcher.find();
-        if(matchFound) {
-            sendText(user.getId(),"Feur");
-        } else {
-            sendText(user.getId(),"T'es cringe frerot");
-        }*/
     }
 
     public void sendText(Long who, String what){
@@ -112,22 +112,44 @@ public class TelegramController extends TelegramLongPollingBot {
             throw new RuntimeException(e);      //Any error will be printed here
         }
     }
-
+    //obtenir un bulletin meteo
     public String getMeteoBulletin(String cityName){
         String url = localURL+"/meteo?cityName="+cityName;
-        System.out.println(url);
-        ResponseEntity<OpenWeather> responseEntity = restTemplate.getForEntity(url,OpenWeather.class);
-        if(responseEntity.getStatusCode().is4xxClientError()){
+        try{
+            ResponseEntity<OpenWeather> responseEntity = restTemplate.getForEntity(url,OpenWeather.class);
+            OpenWeather openWeather = responseEntity.getBody();
+            List list = openWeather.list.get(0);
+            cityName = openWeather.city.name;
+            Double temp = list.main.temp;
+            String weather = list.weather.get(0).description;
+            double windSpeed = list.wind.speed;
+            int windDirection = list.wind.deg;
+            String bulletin = String.format("Bulletin météo pour %s : \nTempérature : %s°C\nMétéo : %s\nVitesse du vent : %s m/s\nDirection du vent : %s degrés", cityName, temp, weather, windSpeed, windDirection);
+            return bulletin;
+        }catch (HttpClientErrorException e){
+            //ville non trouvée
             return "Ville demandée incorect";
         }
-        OpenWeather openWeather = responseEntity.getBody();
-        List list = openWeather.list.get(0);
-        cityName = openWeather.city.name;
-        Double temp = list.main.temp;
-        String weather = list.weather.get(0).description;
-        double windSpeed = list.wind.speed;
-        int windDirection = list.wind.deg;
-        String bulletin = String.format("Bulletin météo pour %s : \nTempérature : %s°C\nMétéo : %s\nVitesse du vent : %s m/s\nDirection du vent : %s degrés", cityName, temp, weather, windSpeed, windDirection);
-        return bulletin;
+    }
+    //formater une blague
+    public String formatBlague(Joke joke){
+        String exit = "";
+        exit += joke.getTitle();
+        exit +="\n\n";
+        exit += joke.getContent();
+        exit += "\n\n";
+        exit += "catégorie : " + joke.getCategory() + "   ";
+        exit += "note : " +joke.getGrade()+ "/10";
+        return  exit;
+    }
+    //obtenir une blague
+    public String grabJoke(int id){
+        try {
+            ResponseEntity<Joke> responseEntity = restTemplate.getForEntity(localURL+"/blague?id="+id,Joke.class);
+            Joke joke = responseEntity.getBody();
+            return formatBlague(joke);
+        }catch (HttpClientErrorException errorException){
+            return "Ta blague n'existe pas";
+        }
     }
 }
