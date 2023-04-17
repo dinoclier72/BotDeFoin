@@ -108,6 +108,10 @@ public class TelegramController extends TelegramLongPollingBot {
                     case "poulet":
                         sendText(userID,"🐔");
                         break;
+                    case "/blagueparnote":
+                        setUserBotState(userID, BotState.WAITING_FOR_JOKE_GRADE);
+                        sendText(userID,"envoie moi la note minimale de ta blague");
+                        break;
                     case "/blague":
                         Joke joke = restTemplate.getForObject(localURL+"/blague",Joke.class);
                         sendText(userID,formatBlague(joke));
@@ -122,7 +126,13 @@ public class TelegramController extends TelegramLongPollingBot {
                         sendText(userID,"c'est parti pour la création de ta blague, donne moi un titre");
                         break;
                     case "/aide":
-                        sendText(userID,"Liste des commandes:\n/meteo - Donne la meteo du jour\n/blague - Donne une blague\n/blaguespecifique - demande une blague en particulier\n/ajouterblague - ajoute une blague petit rigolo\n/aide - affiche la liste des commandes");
+                        sendText(userID,"Liste des commandes:\n" +
+                                "/meteo - Donne la meteo du jour\n" +
+                                "/blague - Donne une blague\n" +
+                                "/blaguespecifique - demande une blague en particulier\n" +
+                                "/ajouterblague - ajoute une blague petit rigolo\n" +
+                                "/blagueparnote - donne une blague selon la note" +
+                                "/aide - affiche la liste des commandes\n");
                         break;
                 }
                 break;
@@ -238,7 +248,7 @@ public class TelegramController extends TelegramLongPollingBot {
             Joke joke = responseEntity.getBody();
             return formatBlague(joke);
         }catch (HttpClientErrorException errorException){
-            return "Ta blague n'existe pas";
+            return "Une telle blague n'existe pas";
         }
     }
 }
