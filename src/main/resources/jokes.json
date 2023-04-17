@@ -1,0 +1,45 @@
+[
+   {
+      "title":"Why did Superman flush the toilet?",
+      "content":"Because it was his doody.",
+      "category":"Superheroes",
+      "grade":4.5
+   },
+   {
+      "title":"Why was Batman always cool?",
+      "content":"Because he had his Bat-fan.",
+      "category":"Superheroes",
+      "grade":3.8
+   },
+   {
+      "title":"What do you call Iron Man when he's feeling down?",
+      "content":"Fe-",
+      "category":"Superheroes",
+      "grade":4.1
+   },
+   {
+      "title":"Why doesn't Spider-Man like going on the internet?",
+      "content":"Because of all the webs.",
+      "category":"Superheroes",
+      "grade":3.2
+   },
+   {
+      "title":"Why did the Joker break up with Harley Quinn?",
+      "content":"She was bat-crazy.",
+      "category":"Superheroes",
+      "grade":4.9
+   },
+   {
+      "title":"Batman et Robin ont un problème avec la Batmobile",
+      "content":"Robin dit a Batman :\n- On a un problème ! La Batmobile ne démarre pas...\nBatman lui répond :\n- Tu as vérifié la batterie ?\n- C'est quoi une Terie ? ",
+      "category":"Superheroes",
+      "grade":10
+   },
+   {
+      "title":"La plus grosse blague du monde",
+      "content":"oui",
+      "category":"DadJokes",
+      "grade":10
+   }
+
+]
