@@ -3,10 +3,10 @@ package fr.ensim.interop.introrest.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.ensim.interop.introrest.model.joke.Joke;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,6 +32,12 @@ public class JokeController {
             e.printStackTrace();
         }
     }
+    @PostMapping(value="/ajouterBlague")
+    public ResponseEntity<Joke> creerEquipe(@RequestBody Joke blag) {
+        blag.generateJokeId();
+        listeBlagues.put(blag.getId(), blag);
+        return ResponseEntity.ok().body(blag);
+    }
 
     @GetMapping(value = "/blague")
     public ResponseEntity<Joke> recupererBlague(@RequestParam(value = "id", required = false) Integer id) {
@@ -48,4 +54,5 @@ public class JokeController {
         int randomId = ids.get(index);
         return ResponseEntity.ok(listeBlagues.get(randomId));
     }
+
 }
