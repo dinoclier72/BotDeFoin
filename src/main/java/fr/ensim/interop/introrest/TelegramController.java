@@ -104,6 +104,10 @@ public class TelegramController extends TelegramLongPollingBot {
                             sendText(userID,"si tu est perdu fait une /aide pour avoir la liste des commandes");
                         }
                         break;
+
+                    case "poulet":
+                        sendText(userID,"🐔");
+                        break;
                     case "/blague":
                         Joke joke = restTemplate.getForObject(localURL+"/blague",Joke.class);
                         sendText(userID,formatBlague(joke));
