@@ -32,7 +32,7 @@ public class JokeController {
             e.printStackTrace();
         }
     }
-    @PostMapping(value="/ajouterBlague")
+    @PostMapping(value="/blague")
     public ResponseEntity<Joke> creerEquipe(@RequestBody Joke blag) {
         blag.generateJokeId();
         listeBlagues.put(blag.getId(), blag);

@@ -6,8 +6,6 @@ import fr.ensim.interop.introrest.model.joke.Joke;
 import fr.ensim.interop.introrest.model.meteo.List;
 import fr.ensim.interop.introrest.model.meteo.OpenWeather;
 import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -40,7 +38,8 @@ public class TelegramController extends TelegramLongPollingBot {
         WAITING_FOR_JOKE_ID,
         WAITING_FOR_JOKE_TITLE,
         WAITING_FOR_JOKE_CONTENT,
-        WAITING_FOR_JOKE_CATEGORY
+        WAITING_FOR_JOKE_CATEGORY,
+        WAITING_FOR_JOKE_GRADE
     }
     private HashMap<Long,BotState> userBotState = new HashMap<Long,BotState>();
     private void resetUserState(long user){
@@ -60,8 +59,8 @@ public class TelegramController extends TelegramLongPollingBot {
     private HashMap<Long, JokeChain> userJokeChain = new HashMap<>();
     private  void initJokeChain(long user){userJokeChain.put(user,new JokeChain());}
     private  void setJokeChainTitle(long user,String title){userJokeChain.get(user).setTitle(title);}
-    private  void setJokeChainContent(long user,String content){userJokeChain.get(user).setTitle(content);}
-    private  void setJokeChainCategory(long user,String category){userJokeChain.get(user).setTitle(category);}
+    private  void setJokeChainContent(long user,String content){userJokeChain.get(user).setContent(content);}
+    private  void setJokeChainCategory(long user,String category){userJokeChain.get(user).setCategory(category);}
     private JokeChain getJokeChain(long user){return userJokeChain.get(user);}
     @Override
     public String getBotUsername() {
@@ -101,6 +100,8 @@ public class TelegramController extends TelegramLongPollingBot {
                         boolean matchFound = matcher.find();
                         if(matchFound) {
                             sendText(userID,"Feur");
+                        }else{
+                            sendText(userID,"si tu est perdu fait une /aide pour avoir la liste des commandes");
                         }
                         break;
                     case "/blague":
@@ -115,6 +116,9 @@ public class TelegramController extends TelegramLongPollingBot {
                         setUserBotState(userID,BotState.WAITING_FOR_JOKE_TITLE);
                         initJokeChain(userID);
                         sendText(userID,"c'est parti pour la création de ta blague, donne moi un titre");
+                        break;
+                    case "/aide":
+                        sendText(userID,"Liste des commandes:\n/meteo - Donne la meteo du jour\n/blague - Donne une blague\n/blaguespecifique - demande une blague en particulier\n/ajouterblague - ajoute une blague petit rigolo\n/aide - affiche la liste des commandes");
                         break;
                 }
                 break;
@@ -149,7 +153,11 @@ public class TelegramController extends TelegramLongPollingBot {
                 resetUserState(userID);
                 sendText(userID,AddJoke(getJokeChain(userID)));
                 break;
-
+            case WAITING_FOR_JOKE_GRADE:
+                float grade = Float.parseFloat(messageText);
+                sendText(userID,grabJoke(grade));
+                resetUserState(userID);
+                break;
         }
     }
 
@@ -161,7 +169,7 @@ public class TelegramController extends TelegramLongPollingBot {
         joke.setCategory(jokeChain.getCategory());
         joke.setGrade(random.nextFloat()*10);
         HttpEntity<Joke> httpEntity = new HttpEntity<>(joke);
-        Joke responseJoke = restTemplate.postForObject(localURL+"/addJoke",httpEntity,Joke.class);
+        Joke responseJoke = restTemplate.postForObject(localURL+"/blague",httpEntity,Joke.class);
         if(responseJoke == null)
             return "ta blague n'as pas été ajouté";
         return formatBlague(responseJoke);
@@ -214,6 +222,15 @@ public class TelegramController extends TelegramLongPollingBot {
     public String grabJoke(int id){
         try {
             ResponseEntity<Joke> responseEntity = restTemplate.getForEntity(localURL+"/blague?id="+id,Joke.class);
+            Joke joke = responseEntity.getBody();
+            return formatBlague(joke);
+        }catch (HttpClientErrorException errorException){
+            return "Ta blague n'existe pas";
+        }
+    }
+    public String grabJoke(float grade){
+        try {
+            ResponseEntity<Joke> responseEntity = restTemplate.getForEntity(localURL+"/blague?grade="+grade,Joke.class);
             Joke joke = responseEntity.getBody();
             return formatBlague(joke);
         }catch (HttpClientErrorException errorException){
