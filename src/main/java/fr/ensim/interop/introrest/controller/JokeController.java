@@ -23,7 +23,7 @@ public class JokeController {
         ObjectMapper objectMapper = new ObjectMapper();
 
         try {
-            Joke[] jokeList = objectMapper.readValue(new File("jokes.json"), Joke[].class);
+            Joke[] jokeList = objectMapper.readValue(new File("src/main/resources/jokes.json"), Joke[].class);
 
             for (Joke joke : jokeList) {
                 joke.generateJokeId();
@@ -53,18 +53,14 @@ public class JokeController {
         }
         //recuperation d'une blague selon son niveau
         if (grade != null) {
-            Collection<Joke> jokeCollection = listeBlagues.values();
-            for(Joke joke : jokeCollection){
-                if (joke.getGrade() < grade){
-                    jokeCollection.remove(joke);
-                }
-
-            }
-            if(jokeCollection.size()==0)
-                return ResponseEntity.notFound().build();
-            int index = random.nextInt(jokeCollection.size());
-            return ResponseEntity.ok(jokeCollection.toArray()[index]);
-
+            Joke joke;
+            do{
+                ArrayList<Integer> ids = new ArrayList<>(listeBlagues.keySet());
+                int index = random.nextInt(ids.size());
+                int randomId = ids.get(index);
+                joke = listeBlagues.get(randomId);
+            }while (joke.getGrade()<grade);
+            return ResponseEntity.ok(joke);
         }
         //recuperation d'une blague aléatoire
         ArrayList<Integer> ids = new ArrayList<>(listeBlagues.keySet());

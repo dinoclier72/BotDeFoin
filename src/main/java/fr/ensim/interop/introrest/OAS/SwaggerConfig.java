@@ -28,8 +28,8 @@ public class SwaggerConfig extends WebMvcConfigurationSupport {
 
     private ApiInfo apiInfo() {
         return new ApiInfoBuilder()
-                .title("Mon API REST")
-                .description("Documentation de mon API REST")
+                .title("BotDeFoinAPI")
+                .description("API pour faire fonctionner le BotDeFoin\nhttps://web.telegram.org/k/#@MegabotdefointavuBot")
                 .version("1.0.0")
                 .build();
     }
