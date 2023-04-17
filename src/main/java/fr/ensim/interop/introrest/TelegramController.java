@@ -1,8 +1,13 @@
-package fr.ensim.interop.introrest.controller;
+package fr.ensim.interop.introrest;
 
+import fr.ensim.interop.introrest.chains.JokeChain;
+import fr.ensim.interop.introrest.chains.MeteoChain;
 import fr.ensim.interop.introrest.model.joke.Joke;
 import fr.ensim.interop.introrest.model.meteo.List;
 import fr.ensim.interop.introrest.model.meteo.OpenWeather;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -11,6 +16,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.*;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import java.util.HashMap;
+import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -29,8 +35,12 @@ public class TelegramController extends TelegramLongPollingBot {
     //etat de la conversation avec le bot
     private enum BotState{
         WAITING_FOR_CITY,
+        WAITING_FOR_FORECAST_DELAY,
         IDLE,
-        WAITING_FOR_JOKE_ID
+        WAITING_FOR_JOKE_ID,
+        WAITING_FOR_JOKE_TITLE,
+        WAITING_FOR_JOKE_CONTENT,
+        WAITING_FOR_JOKE_CATEGORY
     }
     private HashMap<Long,BotState> userBotState = new HashMap<Long,BotState>();
     private void resetUserState(long user){
@@ -40,6 +50,19 @@ public class TelegramController extends TelegramLongPollingBot {
         userBotState.put(user,botState);
     }
     private RestTemplate restTemplate = new RestTemplate();
+
+    private HashMap<Long, MeteoChain> userMeteoChain = new HashMap<>();
+    private void initMeteoChain(long user){userMeteoChain.put(user,new MeteoChain());}
+    private void setMeteoChainCity(long user,String city){userMeteoChain.get(user).setCityName(city);}
+    private void setMeteoChainDelay(long user,int index){userMeteoChain.get(user).setDelayIndex(index);}
+    private MeteoChain getMeteoChain(long user){return userMeteoChain.get(user);}
+
+    private HashMap<Long, JokeChain> userJokeChain = new HashMap<>();
+    private  void initJokeChain(long user){userJokeChain.put(user,new JokeChain());}
+    private  void setJokeChainTitle(long user,String title){userJokeChain.get(user).setTitle(title);}
+    private  void setJokeChainContent(long user,String content){userJokeChain.get(user).setTitle(content);}
+    private  void setJokeChainCategory(long user,String category){userJokeChain.get(user).setTitle(category);}
+    private JokeChain getJokeChain(long user){return userJokeChain.get(user);}
     @Override
     public String getBotUsername() {
         return "MegabotdefointavuBot";
@@ -69,6 +92,7 @@ public class TelegramController extends TelegramLongPollingBot {
                 switch (messageText){
                     case "/meteo":
                         setUserBotState(userID,BotState.WAITING_FOR_CITY);
+                        initMeteoChain(userID);
                         sendText(userID,"Mode meteo activé, donnez maintenant une ville pour la recherche");
                         break;
                     default:
@@ -87,19 +111,60 @@ public class TelegramController extends TelegramLongPollingBot {
                         setUserBotState(userID,BotState.WAITING_FOR_JOKE_ID);
                         sendText(userID,"Mode blague specifique activé, donnez maintenant l'id de la blague recherchée");
                         break;
+                    case "/ajouterblague":
+                        setUserBotState(userID,BotState.WAITING_FOR_JOKE_TITLE);
+                        initJokeChain(userID);
+                        sendText(userID,"c'est parti pour la création de ta blague, donne moi un titre");
+                        break;
                 }
                 break;
             case WAITING_FOR_CITY:
-                String bulletin = getMeteoBulletin(messageText);
-                sendText(userID,bulletin);
-                resetUserState(userID);
+                setMeteoChainCity(userID,messageText);
+                sendText(userID,"Ville reçue indiquez le delai de votre prevision 0-aujourd'hui,4- dans 4 jours");
+                setUserBotState(userID,BotState.WAITING_FOR_FORECAST_DELAY);
                 break;
             case WAITING_FOR_JOKE_ID:
                 int id = Integer.parseInt(messageText);
                 sendText(userID,grabJoke(id));
                 resetUserState(userID);
                 break;
+            case WAITING_FOR_FORECAST_DELAY:
+                setMeteoChainDelay(userID,Integer.parseInt(messageText));
+                String bulletin = getMeteoBulletin(getMeteoChain(userID));
+                sendText(userID,bulletin);
+                resetUserState(userID);
+                break;
+            case WAITING_FOR_JOKE_TITLE:
+                setJokeChainTitle(userID,messageText);
+                sendText(userID,"bien, maintenant donne moi le contenu de ta blague");
+                setUserBotState(userID,BotState.WAITING_FOR_JOKE_CONTENT);
+                break;
+            case WAITING_FOR_JOKE_CONTENT:
+                setJokeChainContent(userID,messageText);
+                sendText(userID,"excellent, j'ai juste besoin de la catégorie et ta blague sera prête");
+                setUserBotState(userID,BotState.WAITING_FOR_JOKE_CATEGORY);
+                break;
+            case WAITING_FOR_JOKE_CATEGORY:
+                setJokeChainCategory(userID,messageText);
+                resetUserState(userID);
+                sendText(userID,AddJoke(getJokeChain(userID)));
+                break;
+
         }
+    }
+
+    private String AddJoke(JokeChain jokeChain) {
+        Random random = new Random();
+        Joke joke = new Joke();
+        joke.setTitle(jokeChain.getTitle());
+        joke.setContent(jokeChain.getContent());
+        joke.setCategory(jokeChain.getCategory());
+        joke.setGrade(random.nextFloat()*10);
+        HttpEntity<Joke> httpEntity = new HttpEntity<>(joke);
+        Joke responseJoke = restTemplate.postForObject(localURL+"/addJoke",httpEntity,Joke.class);
+        if(responseJoke == null)
+            return "ta blague n'as pas été ajouté";
+        return formatBlague(responseJoke);
     }
 
     public void sendText(Long who, String what){
@@ -113,18 +178,21 @@ public class TelegramController extends TelegramLongPollingBot {
         }
     }
     //obtenir un bulletin meteo
-    public String getMeteoBulletin(String cityName){
+    public String getMeteoBulletin(MeteoChain meteoChain){
+        String cityName = meteoChain.getCityName();
+        int index = meteoChain.getDelayIndex();
         String url = localURL+"/meteo?cityName="+cityName;
         try{
             ResponseEntity<OpenWeather> responseEntity = restTemplate.getForEntity(url,OpenWeather.class);
             OpenWeather openWeather = responseEntity.getBody();
-            List list = openWeather.list.get(0);
+            List list = openWeather.list.get(8*index);
             cityName = openWeather.city.name;
+            String dateTime = list.dt_txt;
             Double temp = list.main.temp;
             String weather = list.weather.get(0).description;
             double windSpeed = list.wind.speed;
             int windDirection = list.wind.deg;
-            String bulletin = String.format("Bulletin météo pour %s : \nTempérature : %s°C\nMétéo : %s\nVitesse du vent : %s m/s\nDirection du vent : %s degrés", cityName, temp, weather, windSpeed, windDirection);
+            String bulletin = String.format("Bulletin météo pour %s le %s : \nTempérature : %s°C\nMétéo : %s\nVitesse du vent : %s m/s\nDirection du vent : %s degrés", cityName,dateTime, temp, weather, windSpeed, windDirection);
             return bulletin;
         }catch (HttpClientErrorException e){
             //ville non trouvée
